@@ -1,0 +1,968 @@
+<title>FY27 Operating Rhythm Dashboard</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: status header, productivity index tiles with sparklines, today's forums beside open commitments, then bets, transformation log, and weekly data entry. */
+:root{
+  --bg:#f6f7f9; --surface:#ffffff; --fg:#14181f; --muted:#5b6472; --line:#dfe3ea;
+  --accent:#1f4fd8; --accent-bg:#e8eefc;
+  --good:#12784a; --bad:#b42318; --warn:#b4560a; --warn-bg:#fbeee0; --tf:#0f766e;
+  --display:'Bricolage Grotesque','Helvetica Neue',Arial,sans-serif;
+  --body:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1319; --surface:#171c24; --fg:#e8ebf0; --muted:#98a2b3; --line:#2a313c;
+  --accent:#7d9cff; --accent-bg:#1b2745; --good:#5fd08f; --bad:#ff8a80; --warn:#f0a15e; --warn-bg:#3a2a1a; --tf:#5fc4b8;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1319; --surface:#171c24; --fg:#e8ebf0; --muted:#98a2b3; --line:#2a313c;
+  --accent:#7d9cff; --accent-bg:#1b2745; --good:#5fd08f; --bad:#ff8a80; --warn:#f0a15e; --warn-bg:#3a2a1a; --tf:#5fc4b8;
+  color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:15px/1.5 var(--body);
+  padding-block:28px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:30px}
+h1,h2,h3{font-family:var(--display);margin:0;letter-spacing:-.01em;text-wrap:balance}
+h1{font-size:clamp(26px,4.5vw,38px);line-height:1.08}
+h2{font-size:20px}
+.eyebrow{font:500 12px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.muted{color:var(--muted)}
+section{display:flex;flex-direction:column;gap:12px;min-width:0}
+.sh{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.sh p{margin:0;color:var(--muted);font-size:13px}
+.banner{background:var(--warn-bg);border:1px solid var(--warn);color:var(--fg);border-radius:6px;padding:10px 14px;font-size:14px}
+.stats{display:flex;flex-wrap:wrap;gap:10px 30px;padding-top:10px}
+.stats b{font:600 24px var(--display);display:block;font-variant-numeric:tabular-nums}
+.stats span{font-size:13px;color:var(--muted)}
+.stats .over b{color:var(--bad)}
+
+/* tiles */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:12px 14px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.tile.lead{border-color:var(--accent);background:var(--accent-bg)}
+.tile .nm{font:600 13px var(--display)}
+.tile .sub{font-size:11.5px;color:var(--muted);min-height:2.6em;line-height:1.3}
+.tile .val{font:600 26px var(--display);font-variant-numeric:tabular-nums;margin-top:4px}
+.tile .dl{font:500 12px var(--mono);font-variant-numeric:tabular-nums}
+.up{color:var(--good)} .dn{color:var(--bad)} .flat{color:var(--muted)}
+.tile svg{width:100%;height:36px;margin-top:6px;color:var(--accent);display:block}
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:6px;padding:16px;color:var(--muted);font-size:14px}
+.empty b{color:var(--fg)}
+
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:14px}
+@media(max-width:860px){.two{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+
+/* today */
+.fr{display:grid;grid-template-columns:62px minmax(0,1fr);gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.fr:first-of-type{border-top:0}
+.fr .t{font:500 12px var(--mono);color:var(--muted);padding-top:2px}
+.fr b{font-size:14px;display:block}
+.fr span{font-size:13px;color:var(--muted)}
+.fr.tfk b{color:var(--tf)}
+
+/* lists */
+.row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:start;padding:8px 0;border-top:1px solid var(--line)}
+.row:first-of-type{border-top:0}
+.row .tx{font-size:14px;min-width:0;overflow-wrap:anywhere}
+.row .meta{font-size:12px;color:var(--muted)}
+.chip{font:500 11px var(--mono);letter-spacing:.04em;text-transform:uppercase;border:1px solid var(--line);border-radius:3px;padding:1px 6px;color:var(--muted);white-space:nowrap}
+.chip.over{color:var(--bad);border-color:var(--bad)}
+.chip.ok{color:var(--good);border-color:var(--good)}
+.chip.tf{color:var(--tf);border-color:var(--tf)}
+.x{background:none;border:0;color:var(--muted);cursor:pointer;font-size:16px;line-height:1;padding:2px 6px;border-radius:3px}
+.x:hover{color:var(--bad)}
+input[type=checkbox]{width:18px;height:18px;margin-top:2px;accent-color:var(--accent)}
+
+/* forms */
+form{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;align-items:end}
+form .wide{grid-column:1/-1}
+label{display:flex;flex-direction:column;gap:3px;font:500 11px var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--muted);min-width:0}
+input,select,textarea{font:14px var(--body);color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:7px 8px;min-width:0;width:100%}
+input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.btn{font:600 14px var(--body);background:var(--accent);color:var(--bg);border:0;border-radius:4px;padding:8px 14px;cursor:pointer;min-height:34px}
+.btn.ghost{background:none;color:var(--fg);border:1px solid var(--line)}
+details.add{border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+details.add>summary{cursor:pointer;padding:10px 14px;font:600 14px var(--body);color:var(--accent);list-style:none}
+details.add>summary::-webkit-details-marker{display:none}
+details.add form{padding:2px 14px 14px}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:720px;font-size:13px;font-variant-numeric:tabular-nums}
+th,td{text-align:right;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{font:500 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+tr:last-child td{border-bottom:0}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:4px;font-size:14px;max-width:90vw;z-index:20}
+
+.tabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--line);margin-top:14px}
+.tab{font:600 14px var(--body);background:none;border:0;border-bottom:3px solid transparent;color:var(--muted);padding:9px 14px;cursor:pointer;margin-bottom:-1px}
+.tab[aria-selected=true]{color:var(--fg);border-bottom-color:var(--accent)}
+.tab:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.view{display:flex;flex-direction:column;gap:30px}
+.sec-head h2{font-size:20px}
+.sec-head p{margin:6px 0 0;color:var(--muted);max-width:68ch;font-size:14px}
+.tag{font:500 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.org{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.org .box{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:12px 14px;min-width:0}
+.org .box b{display:block;font-family:var(--display);font-size:16px}
+.org .box span{color:var(--muted);font-size:13px}
+.org .you{border-color:var(--accent);background:var(--accent-bg)}
+.levers,.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.lever,.rcard{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:16px;min-width:0}
+.lever{display:flex;flex-direction:column;gap:8px}
+.lever h3,.rcard h3{font-size:17px;margin-bottom:6px}
+.lever ul,.rcard ul{margin:0;padding-left:18px;font-size:14px}
+.lever li,.rcard li{margin:3px 0}
+.lever .q{border-top:1px solid var(--line);padding-top:8px;color:var(--muted);font-size:13px}
+.lever .q b{color:var(--fg)}
+.note{background:var(--surface);border:1px dashed var(--line);border-radius:6px;padding:12px 14px;color:var(--muted);font-size:14px;margin-top:12px}
+.note b{color:var(--fg)}
+.rt table{min-width:640px}
+.rt th,.rt td{text-align:left;white-space:normal}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin:10px 0}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px}
+.week{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+@media(max-width:900px){.week{grid-template-columns:1fr}}
+.day{display:flex;flex-direction:column;gap:6px;min-width:0;padding:6px;border-radius:6px;border:1px solid transparent}
+.day.today{border-color:var(--accent);background:var(--accent-bg)}
+.day h3{font-size:15px;padding:0 2px 4px}
+.blk{display:block;text-align:left;width:100%;font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--c);border-radius:4px;padding:8px 10px;cursor:pointer}
+.blk.static{cursor:default}
+.blk[data-k=i]{--c:var(--accent)} .blk[data-k=c]{--c:var(--warn);background:var(--warn-bg)} .blk[data-k=f]{--c:#4a6b57} .blk[data-k=t]{--c:var(--tf)}
+.blk .t{font:500 11px var(--mono);color:var(--muted);display:flex;justify-content:space-between;gap:8px}
+.blk .n{font-weight:600;font-size:13.5px;line-height:1.3;margin-top:2px}
+.blk .w{font-size:12px;color:var(--muted);margin-top:1px}
+.blk:not(.static):hover{border-color:var(--c)}
+.blk:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.daily{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:12px 14px;font-size:14px;margin-bottom:10px}
+.daily a{color:var(--accent)}
+.budget{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:16px;display:flex;flex-direction:column;gap:12px;margin-top:12px}
+.bar{display:flex;height:22px;border-radius:3px;overflow:hidden;background:var(--line)}
+.bar div{height:100%}
+.bar .i{background:var(--accent)} .bar .t{background:var(--tf)} .bar .f{background:#4a6b57} .bar .c{background:var(--warn)}
+.bstats{display:flex;flex-wrap:wrap;gap:8px 28px;font-size:14px}
+.bstats b{font:600 20px var(--display);display:block;font-variant-numeric:tabular-nums}
+.bstats span{color:var(--muted);font-size:13px}
+.pb{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.pb details{background:var(--surface);border:1px solid var(--line);border-radius:6px}
+.pb details[open]{border-color:var(--accent)}
+.pb summary{list-style:none;cursor:pointer;padding:12px 14px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 16px;align-items:baseline}
+.pb summary::-webkit-details-marker{display:none}
+.pb summary .nm{font:600 16px var(--display)}
+.pb summary .when{font:400 12px var(--mono);color:var(--muted);text-align:right}
+.pb summary .out{grid-column:1/-1;color:var(--muted);font-size:14px}
+@media(max-width:560px){.pb summary{grid-template-columns:1fr}.pb summary .when{text-align:left}}
+.pb .body{padding:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px 28px;border-top:1px solid var(--line)}
+.pb .body h4{margin:0 0 6px;font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.pb .body p,.pb .body ul,.pb .body ol{margin:0;font-size:14px}
+.pb .body ul,.pb .body ol{padding-left:18px}
+.pb .body li{margin:3px 0}
+.ag{list-style:none;padding:0!important;display:flex;flex-direction:column;gap:5px}
+.ag li{display:grid;grid-template-columns:44px 1fr;gap:8px;margin:0}
+.ag em{font:500 12px var(--mono);color:var(--accent);font-style:normal;padding-top:1px}
+.grp{font:500 12px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:10px 0 0}
+.fr b a,.fr .lnk{color:var(--accent);cursor:pointer}
+.day h3{display:flex;justify-content:space-between;align-items:baseline;gap:8px}.day h3 span{font:400 11px var(--mono);color:var(--muted)}
+.cap{font:500 11px var(--mono);color:var(--muted)}
+</style>
+
+<div class="wrap">
+<header>
+  <div class="eyebrow" id="today-label">FY27 Operating Rhythm</div>
+  <h1>FY27 Operating Rhythm</h1>
+  <div class="stats" id="topstats"></div>
+
+<nav class="tabs" role="tablist" aria-label="Views">
+  <button class="tab" role="tab" id="tab-dash" data-tab="dash" aria-selected="true">Dashboard</button>
+  <button class="tab" role="tab" id="tab-week" data-tab="week" aria-selected="false">The week</button>
+  <button class="tab" role="tab" id="tab-playbook" data-tab="playbook" aria-selected="false">Playbook</button>
+  <button class="tab" role="tab" id="tab-reference" data-tab="reference" aria-selected="false">Reference</button>
+</nav>
+</header><div class="view" id="v-dash">
+<div id="banner"></div>
+
+<section>
+  <div class="sh"><h2>Revenue Productivity Index</h2><p id="idx-note"></p></div>
+  <div class="tiles" id="tiles"></div>
+  <div class="note" id="th-line"></div>
+  <details class="add"><summary>Set escalation thresholds</summary>
+    <form id="f-th">
+      <label>Deal or forecast exposure ($ ASV)<input id="th-exposure" type="number" min="0" step="any"></label>
+      <label>Productivity floor (net new ASV per seller FTE)<input id="th-floor" type="number" min="0" step="any"></label>
+      <button class="btn" type="submit">Save</button>
+    </form>
+  </details>
+</section>
+
+<div class="two">
+  <section>
+    <div class="sh"><h2 id="today-h">Today</h2></div>
+    <div class="card" id="today"></div>
+  </section>
+  <section>
+    <div class="sh"><h2>Commitments and decisions</h2><p>Logged within 30 minutes of each meeting</p></div>
+    <div class="card"><div id="commits"></div></div>
+    <div class="card" id="byforum"></div>
+    <details class="add"><summary>+ Add commitment</summary>
+      <form id="f-commit">
+        <label class="wide">Decision or commitment<input id="c-text" required maxlength="240"></label>
+        <label>Owner<input id="c-owner" required maxlength="60"></label>
+        <label>Forum<select id="c-forum"></select></label>
+        <label>Due<input id="c-due" type="date" required></label>
+        <button class="btn" type="submit">Add</button>
+      </form>
+    </details>
+  </section>
+</div>
+
+<section>
+  <div class="sh"><h2>Growth bets, ranked</h2><p>Risk-adjusted ASV per FTE, with time to revenue</p></div>
+  <div class="card"><div id="bets"></div></div>
+  <details class="add"><summary>+ Propose bet</summary>
+    <form id="f-bet">
+      <label class="wide">Bet<input id="b-name" required maxlength="160"></label>
+      <label>Accountable owner (one person)<input id="b-owner" required maxlength="60"></label>
+      <label>Executive sponsor<input id="b-sponsor" maxlength="60"></label>
+      <label class="wide">Execution functions<input id="b-exec" maxlength="120" placeholder="Sales, SDR, SC, Marketing, Channel"></label>
+      <label>Expected ASV ($)<input id="b-hyp" type="number" min="0" step="any" required></label>
+      <label>FTE capacity required<input id="b-fte" type="number" min="0" step="any" required></label>
+      <label>Probability of success (%)<input id="b-conf" type="number" min="0" max="100" step="any" required></label>
+      <label>Time to revenue (weeks)<input id="b-ttr" type="number" min="0" step="any" required></label>
+      <label>Launch date<input id="b-start" type="date" required></label>
+      <button class="btn" type="submit">Add</button>
+    </form>
+  </details>
+</section>
+
+<section>
+  <div class="sh"><h2>Transformation projects</h2><p id="tf-next"></p></div>
+  <div class="card"><div id="tfs"></div></div>
+  <details class="add"><summary>+ Start project</summary>
+    <form id="f-tf">
+      <label class="wide">Project<input id="t-hyp" required maxlength="200"></label>
+      <label>Topic<select id="t-topic"></select></label>
+      <label>Owner<input id="t-owner" required maxlength="60"></label>
+      <label>Baseline<input id="t-base" required maxlength="80"></label>
+      <label>Target<input id="t-target" required maxlength="80"></label>
+      <label>Pilot cohort<input id="t-cohort" maxlength="80"></label>
+      <label>Cycle start<input id="t-start" type="date" required></label>
+      <button class="btn" type="submit">Start</button>
+    </form>
+  </details>
+</section>
+
+<section>
+  <div class="sh"><h2>Weekly data</h2><p>Enter once a week, ahead of Friday&rsquo;s Performance &amp; Commitments. Re-saving a week replaces it.</p></div>
+  <details class="add" id="wk-details"><summary>+ Enter week</summary>
+    <form id="f-week">
+      <label>Week starting (Mon)<input id="w-date" type="date" required></label>
+      <label>Net new ASV ($)<input id="w-asv" type="number" min="0" step="any" required></label>
+      <label>Total seller FTE<input id="w-tsellers" type="number" min="0" step="any" required></label>
+      <label>Productive seller FTE<input id="w-sellers" type="number" min="0" step="any" required></label>
+      <label>FLMs<input id="w-flms" type="number" min="0" step="any" required></label>
+      <label>Supporting FTE<input id="w-support" type="number" min="0" step="any" required></label>
+      <label>Revenue-org FTE (total)<input id="w-fte" type="number" min="0" step="any" required></label>
+      <label>Managed accounts<input id="w-accts" type="number" min="0" step="any" required></label>
+      <label>Pipeline converted to ASV ($)<input id="w-conv" type="number" min="0" step="any"></label>
+      <label>Total managed ASV ($)<input id="w-managed" type="number" min="0" step="any"></label>
+      <label>Gross expansion ($)<input id="w-exp" type="number" min="0" step="any"></label>
+      <label>Attrition ($)<input id="w-attr" type="number" min="0" step="any"></label>
+      <label>Forecast call ($)<input id="w-call" type="number" min="0" step="any"></label>
+      <label>Actual ($)<input id="w-actual" type="number" min="0" step="any"></label>
+      <button class="btn" type="submit">Save week</button>
+    </form>
+  </details>
+  <div class="tw"><table id="wk-table"></table></div>
+</section>
+</div><div class="view" id="v-week" hidden><section>
+  <div class="sec-head">
+    <h2>The week</h2>
+    <p>Seven core forums, with customer time, skip-levels, and transformation work scheduled around them. Times are a starting point; select any meeting to jump to its agenda.</p>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--internal)"></i>Leadership rhythm</span>
+    <span><i style="background:var(--tf)"></i>Business transformation</span>
+    <span><i style="background:var(--focus)"></i>Prep and focus</span>
+    <span><i style="background:var(--field)"></i>Customer and field</span>
+  </div>
+  <div class="daily"><b>Every day:</b> 7:45 morning scan (15 min) and 4:45 daily close (15 min). <a href="#" data-open="scan" style="color:var(--accent)">Morning scan</a> &middot; <a href="#" data-open="close" style="color:var(--accent)">Daily close</a></div>
+  <div class="week" id="week"></div>
+  <div class="budget">
+    <div class="eyebrow">Scheduled time budget</div>
+    <div class="bar" id="bar" role="img" aria-label="Time split"></div>
+    <div class="bstats" id="bstats"></div>
+    <div class="tag" style="text-transform:none;letter-spacing:0;font-family:var(--body);font-size:13px">The remaining hours stay open for email, travel, and what breaks mid-week. Shift customer blocks up in the last month of a quarter.</div>
+  </div>
+</section><section>
+  <div class="sec-head">
+    <h2>Three questions for every major meeting</h2>
+  </div>
+  <div class="cols">
+    <div class="rcard"><h3>1. Where are we underutilizing capacity?</h3><ul><li>Reps, SDRs, SCs, CSMs, programs, customer relationships</li></ul></div>
+    <div class="rcard"><h3>2. What consumes capacity without producing revenue?</h3><ul><li>Low-yield meetings, unqualified opportunities, manual processes, low-converting plays</li></ul></div>
+    <div class="rcard"><h3>3. What will we stop, start, or reallocate?</h3><ul><li>Not another action item. A resource or operating decision.</li></ul></div>
+  </div>
+</section></div><div class="view" id="v-playbook" hidden><section>
+  <div class="sec-head">
+    <h2>Meeting playbook</h2>
+    <p>Each meeting has one outcome, a timed agenda, and the inputs people bring. If the pre-read is not in by the night before, the meeting shrinks to the decision only.</p>
+  </div>
+  <div class="pb" id="pb"></div>
+</section></div><div class="view" id="v-reference" hidden><section>
+  <div class="sec-head">
+    <h2>Who decides what</h2>
+    <p>The rhythm should not make you the center of every decision across 100+ people. Take exceptions; let the levels below own the rest.</p>
+  </div>
+  <div class="cols">
+    <div class="rcard"><h3>FLM owns</h3><ul><li>Rep coaching and opportunity progression</li><li>Weekly execution</li><li>Normal deal obstacles</li></ul></div>
+    <div class="rcard"><h3>Director owns</h3><ul><li>Regional capacity and pipeline</li><li>Manager effectiveness</li><li>Forecast quality</li><li>Resource tradeoffs inside the region</li></ul></div>
+    <div class="rcard"><h3>You own</h3><ul><li>Cross-region allocation</li><li>Ecosystem prioritization</li><li>Structural productivity</li><li>Executive relationships and leadership bench</li><li>Exceptional revenue interventions</li></ul></div>
+  </div>
+</section>
+<section>
+  <div class="sec-head">
+    <h2>When it becomes your problem</h2>
+    <p>Provisional starting rules to calibrate after 30 days, not permanent targets. Directors keep routine resolution; you step in when a threshold or the decision authority requires it.</p>
+  </div>
+  <div class="tw rt"><table>
+    <thead><tr><th>Escalate to you</th><th>Provisional rule</th></tr></thead>
+    <tbody>
+      <tr><td>Revenue exposure</td><td>Material deal risk over $250K ASV</td></tr>
+      <tr><td>Forecast movement</td><td>Regional commit moves more than 10% week over week</td></tr>
+      <tr><td>Productivity deterioration</td><td>An FLM team 20% below adjusted peer productivity for 60 days</td></tr>
+      <tr><td>Pipeline creation</td><td>A region below 75% of required creation pace for two weeks</td></tr>
+      <tr><td>Cross-functional conflict</td><td>SDR, SC, Channel, or Marketing allocation unresolved for more than five business days</td></tr>
+      <tr><td>Executive leverage</td><td>A customer decision that needs your relationship or authority</td></tr>
+      <tr><td>Strategic tradeoff</td><td>Changing coverage, channel ownership, programs, or capacity</td></tr>
+    </tbody>
+  </table></div>
+</section><section>
+  <div class="sec-head">
+    <h2>What drives revenue per employee</h2>
+    <p>Pipeline, productivity, and forecast are the operating levers you inspect weekly. Revenue per employee is a financial outcome, so four economic drivers sit behind them. Count dotted-line functions in the denominator.</p>
+  </div>
+  <div class="levers">
+    <div class="lever">
+      <span class="tag">Operating lever 1</span><h3>Pipeline coverage and creation</h3>
+      <ul><li>Coverage by region and quarter</li><li>Qualified pipeline yield by play</li><li>SDR meeting to opportunity conversion</li></ul>
+      <div class="q"><b>Owned in:</b> Revenue Growth Council</div>
+    </div>
+    <div class="lever">
+      <span class="tag">Operating lever 2</span><h3>Seller and manager productivity</h3>
+      <ul><li>Net new ASV per seller FTE, total and productive</li><li>Percent of territories productive</li><li>Ramp productivity</li></ul>
+      <div class="q"><b>Owned in:</b> Manager Productivity</div>
+    </div>
+    <div class="lever">
+      <span class="tag">Operating lever 3</span><h3>Forecast confidence and velocity</h3>
+      <ul><li>Call vs actual by region</li><li>Qualified pipeline converted per quarter</li><li>Slips and pull-ins</li></ul>
+      <div class="q"><b>Owned in:</b> Forecast &amp; Revenue Risk</div>
+    </div>
+    <div class="lever">
+      <span class="tag">Economic drivers</span><h3>Four outcomes behind the levers</h3>
+      <ul><li>Average deal size</li><li>Retention and expansion</li><li>Account penetration</li><li>Capacity efficiency: output per supporting FTE</li></ul>
+      <div class="q"><b>Owned in:</b> Finance Outlook (monthly bridge) and the Productivity Index</div>
+    </div>
+  </div>
+  <div class="note"><b>Week one task:</b> pull a baseline for each metric and set your own targets. This page assumes no numbers for your business.</div>
+</section><section>
+  <div class="sec-head">
+    <h2>FY27 Revenue Productivity Index</h2>
+    <p>North star: net new ASV per total revenue-organization FTE, with shared SDR, SC, CSM, Marketing, GTM, and Channel capacity allocated by one agreed rule. The other measures explain it. Read them side by side; do not add them.</p>
+  </div>
+  <div class="tw rt"><table>
+    <thead><tr><th>Measure</th><th>Definition</th><th>What it tells you</th></tr></thead>
+    <tbody>
+      <tr><td>North star (growth)</td><td>Net new ASV / total revenue-organization FTE</td><td>Is the whole system producing more per head?</td></tr>
+      <tr><td>Companion (book of business)</td><td>Total managed ASV / total revenue-organization FTE</td><td>Does growth hold up once attrition and retention are counted? Read with the retention bridge.</td></tr>
+      <tr><td>Seller productivity</td><td>Net new ASV / total seller FTE</td><td>Actual workforce productivity</td></tr>
+      <tr><td>Producing sellers</td><td>Net new ASV / productive seller FTE</td><td>How the producing group performs. Read beside the total: dropping weak sellers from the denominator can raise it without raising output.</td></tr>
+      <tr><td>Management leverage</td><td>Net new ASV / FLM; 90-day change adjusted for territory and staffing</td><td>Is each manager adding output?</td></tr>
+      <tr><td>Support leverage</td><td>Net new ASV / supporting FTE, shared outcome</td><td>Does support capacity pay back? Judge lift by play, pilot, or cohort.</td></tr>
+      <tr><td>Account yield</td><td>Net new ASV / managed account</td><td>Are we getting more from accounts we already cover?</td></tr>
+      <tr><td>Revenue velocity</td><td>Qualified pipeline converted to ASV per quarter</td><td>Is the pipeline turning faster?</td></tr>
+      <tr><td>Retention bridge</td><td>Gross expansion, attrition, and net, tracked separately</td><td>Explains the net result</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note"><b>Attribution rule:</b> no function gets its own ASV total. Agree one allocation of shared capacity and evaluate lift by play, pilot, or cohort so no dollar is counted twice. Whether better deployment of existing capacity beats adding resources is the question this index exists to answer.</div>
+</section>
+<section>
+  <div class="sec-head">
+    <h2>Growth investment record</h2>
+    <p>One record per Revenue Growth Council bet. The accountable owner is one person, not a committee.</p>
+  </div>
+  <div class="tw rt"><table>
+    <thead><tr><th>Field</th><th>Rule</th></tr></thead>
+    <tbody>
+      <tr><td>Executive sponsor</td><td>You or the VP of Sales; clears blockers across functions</td></tr>
+      <tr><td>Accountable owner</td><td>One named person who owns the result</td></tr>
+      <tr><td>Execution</td><td>The functions contributing, for example Sales, SDR, SC, Marketing, Channel</td></tr>
+      <tr><td>Target</td><td>Expected ASV, probability of success, and weeks to revenue</td></tr>
+      <tr><td>Resources</td><td>Agreed FTE capacity</td></tr>
+      <tr><td>Decision date</td><td>30-day checkpoint to continue, change, or stop</td></tr>
+    </tbody>
+  </table></div>
+</section><section>
+  <div class="sec-head"><h2>Beyond the week</h2></div>
+  <div class="cols">
+    <div class="rcard"><h3>Benefit reviews</h3><ul>
+      <li>30, 60, and 90 days after a transformation project scales.</li>
+      <li>Operational: hours saved per seller. Commercial: added meetings or qualified opportunities. Financial: incremental ASV against a comparison group.</li></ul></div>
+    <div class="rcard"><h3>Monthly</h3><ul>
+      <li>Revenue productivity bridge with Finance (first Tuesday).</li>
+      <li>Business review with the VP of Sales.</li>
+      <li>Win/loss and talent calibration sessions, scheduled when needed.</li>
+      <li>Detailed functional reviews with SDR, CSM, SC, GTM, Marketing, run by their leaders, not you.</li></ul></div>
+    <div class="rcard"><h3>Quarterly</h3><ul>
+      <li>Territory and capacity reset against yield and the Index.</li>
+      <li>Manager bench review: ready for director, needs a plan.</li>
+      <li>Customer advisory sessions with top accounts.</li></ul></div>
+    <div class="rcard"><h3>Retired from v1</h3><ul>
+      <li>Pipeline Council, SC sync, Attach and Expansion, Marketing and GTM sync: merged into the Revenue Growth Council.</li>
+      <li>Six weekly skip-levels cut to three.</li>
+      <li>Standing Talent and Win/Loss meetings: now monthly sessions when needed.</li></ul></div>
+    <div class="rcard"><h3>30-day pilot</h3><ul><li>Set baselines in week one, then run the cadence unchanged for 30 days.</li><li>Use the decisions-by-forum count on the Dashboard to see which meetings produced decisions.</li><li>Cut or merge any forum that produced none before adding anything new.</li></ul></div>
+    <div class="rcard"><h3>Rules for every meeting</h3><ul>
+      <li>Pre-read due the evening before.</li>
+      <li>One outcome, written in the invite.</li>
+      <li>Decision and owner logged within 30 minutes.</li>
+      <li>Forecast talk lives in Monday&rsquo;s forum and the Finance outlook.</li></ul></div>
+  </div>
+</section><section>
+  <div class="sec-head"><h2>Scorecard by forum</h2><p>Where each number gets reviewed, so nothing is discussed twice.</p></div>
+  <div class="tw rt"><table>
+    <thead><tr><th>Metric</th><th>Measure</th><th>Reviewed in</th><th>Owner</th></tr></thead>
+    <tbody>
+      <tr><td>Call vs actual, exceptions</td><td>Revenue velocity</td><td>Forecast &amp; Revenue Risk (Mon)</td><td>Directors</td></tr>
+      <tr><td>Expected ASV, FTE required, probability, time to revenue</td><td>North star</td><td>Revenue Growth Council (Tue)</td><td>Function and Channel leaders</td></tr>
+      <tr><td>Lift by play, pilot, or cohort</td><td>Support leverage</td><td>Revenue Growth Council (Tue)</td><td>Function leaders</td></tr>
+      <tr><td>Team productivity by FLM, 90-day change</td><td>Management leverage</td><td>Manager Productivity (Thu)</td><td>Directors</td></tr>
+      <tr><td>Territory potential, ramp, deal mix</td><td>Seller productivity</td><td>Manager Productivity (Thu)</td><td>Directors</td></tr>
+      <tr><td>Net new ASV per managed account</td><td>Account yield</td><td>Finance bridge (monthly)</td><td>You, Finance</td></tr>
+      <tr><td>Project baseline, target, scale or stop</td><td>Any</td><td>Business Transformation (Thu)</td><td>You</td></tr>
+      <tr><td>30/60/90-day benefit results</td><td>North star</td><td>Business Transformation (Thu)</td><td>Project owner</td></tr>
+      <tr><td>Total managed ASV, expansion, attrition</td><td>Companion</td><td>Finance bridge (monthly)</td><td>You, Finance</td></tr>
+    </tbody>
+  </table></div>
+</section>
+<section>
+  <div class="sec-head">
+    <h2>30-day pilot scorecard</h2>
+    <p>Judge the rhythm by whether decisions lead to action, not by whether every meeting ran. A meeting that produces many decisions but little implemented change is also failing.</p>
+  </div>
+  <div class="tw rt"><table>
+    <thead><tr><th>Measure</th><th>Definition</th></tr></thead>
+    <tbody>
+      <tr><td>Decision effectiveness</td><td>Decisions implemented / decisions committed (shown on the Dashboard)</td></tr>
+      <tr><td>Executive leverage</td><td>Your interventions that produced a measurable outcome</td></tr>
+      <tr><td>Ecosystem execution</td><td>Growth bets launched with owner, resources, and baseline</td></tr>
+      <tr><td>Manager leverage</td><td>FLM coaching actions adopted and evaluated</td></tr>
+      <tr><td>Calendar discipline</td><td>Protected customer and transformation hours honored</td></tr>
+      <tr><td>Meeting value</td><td>Decisions implemented relative to meeting hours</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note"><b>Planned vs actual at day 30:</b> compare hours across revenue creation (customers and partners), leadership development (Directors and FLMs), system improvement (transformation), business inspection (forecast, scorecards, reviews), and reactive work (escalations, admin, unplanned meetings). The signal is whether the protected hours survive the week.</div>
+</section><section>
+  <div class="sec-head"><h2>Who you lead and who you pull</h2></div>
+  <div class="org">
+    <div class="box"><span class="tag">Reports to</span><b>VP of Sales</b><span>Weekly 1:1, no surprises</span></div>
+    <div class="box you"><span class="tag">You</span><b>Sales leader</b><span>3 directors &middot; 15 FLMs &middot; 85 reps</span></div>
+    <div class="box"><span class="tag">Direct line</span><b>East / West / Central Directors</b><span>5 FLMs each, about 5.7 reps per FLM</span></div>
+    <div class="box"><span class="tag">Dotted line</span><b>SDR &middot; CSM &middot; SC &middot; GTM &middot; Marketing &middot; Channel</b><span>Decide how much pipeline, attach, and win rate your reps get; Channel owns partner-led capacity</span></div>
+    <div class="box"><span class="tag">Partner</span><b>Finance</b><span>Weekly outlook call</span></div>
+  </div>
+</section></div></div>
+<div id="toast-host"></div>
+
+<script>
+document.addEventListener('click',function(e){var t=e.target.closest('[data-open]');if(t){e.preventDefault();if(window.openMeeting)window.openMeeting(t.getAttribute('data-open'))}});
+
+var FORUMS=[
+ ['Forecast & Revenue Risk','Mon','9:00','One forecast and three critical interventions'],
+ ['Revenue Growth Council','Tue','9:00','Which bet gets the next unit of capacity'],
+ ['Deal interventions','Tue','10:30','Dated next step, sponsor, and owner on each deal'],
+ ['Finance Outlook','Tue','1:00','One trusted number and the tradeoffs'],
+ ['Director 1:1s','Wed','8:30','One people or execution decision per director'],
+ ['VP of Sales 1:1','Wed','10:15','No surprises; a decision or resource answer'],
+ ['Manager Productivity','Thu','8:30','One practice to scale, one constraint to remove'],
+ ['Business Transformation','Thu','10:30','One project through diagnose, design, pilot, decide'],
+ ['Performance & Commitments','Fri','8:30','What changed and what must happen next week']
+];
+var SKIPS={Mon:'10:15',Wed:'1:00',Fri:'10:00'};
+var TOPICS=['Coverage redesign','AI and automation','Channel productivity','Selling friction','Commercial programs'];
+var DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+var DAYNAMES={Mon:'Monday',Tue:'Tuesday',Wed:'Wednesday',Thu:'Thursday',Fri:'Friday'};
+
+var S={weeks:[],commits:[],bets:[],tfs:[],settings:[]};
+var db=null;
+
+function el(tag,cls,text){var e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e}
+function $(id){return document.getElementById(id)}
+function iso(d){var m=d.getMonth()+1,day=d.getDate();return d.getFullYear()+'-'+(m<10?'0':'')+m+'-'+(day<10?'0':'')+day}
+function today(){return new Date()}
+function mondayOf(d){var x=new Date(d.getFullYear(),d.getMonth(),d.getDate());var g=x.getDay();x.setDate(x.getDate()-((g+6)%7));return x}
+function parseISO(s){var p=String(s).split('-');return new Date(+p[0],+p[1]-1,+p[2])}
+function daysBetween(a,b){return Math.round((a-b)/86400000)}
+function money(n){if(n==null||!isFinite(n))return '—';var a=Math.abs(n),s=n<0?'-':'';
+  if(a>=1e6)return s+'$'+(a/1e6).toFixed(a>=1e7?1:2)+'M';if(a>=1e3)return s+'$'+(a/1e3).toFixed(a>=1e5?0:1)+'K';return s+'$'+a.toFixed(0)}
+function fdate(s){var d=parseISO(s);return d.toLocaleDateString(undefined,{month:'short',day:'numeric'})}
+function toast(msg){var t=el('div','toast',msg);$('toast-host').appendChild(t);setTimeout(function(){t.remove()},3200)}
+function num(id){var v=$(id).value;return v===''?null:Number(v)}
+function div(a,b){return (a==null||b==null||!b)?null:a/b}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+function tryStore(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+
+/* ---------- data layer ---------- */
+function rows(snap){
+  var arr=Array.isArray(snap)?snap:(snap&&(snap.docs||snap.items))||[];
+  return arr.map(function(d){var data=typeof d.data==='function'?d.data():(d.data||d);return Object.assign({},data,{id:d.id||data.id})});
+}
+function watch(name,key){
+  var col=db.collection(name);
+  function apply(snap){S[key]=rows(snap);render()}
+  function fail(e){toast('Could not load '+name)}
+  if(typeof col.onSnapshot==='function'){col.onSnapshot(apply,fail)}
+  else if(typeof col.get==='function'){col.get().then(apply,fail)}
+}
+function reload(name,key){var col=db.collection(name);if(typeof col.onSnapshot!=='function'&&col.get){col.get().then(function(s){S[key]=rows(s);render()})}}
+function save(name,key,id,data,ok){
+  if(!db){toast('Sign in to save');return Promise.resolve()}
+  return db.collection(name).doc(id).set(data).then(function(){if(ok)toast(ok);reload(name,key)},function(e){toast('Could not save. You may have view-only access.')});
+}
+function patch(name,key,id,data){
+  if(!db)return;
+  return db.collection(name).doc(id).update(data).then(function(){reload(name,key)},function(){toast('Could not update')});
+}
+function remove(name,key,id){
+  if(!db)return;
+  return db.collection(name).doc(id).delete().then(function(){reload(name,key)},function(){toast('Could not delete')});
+}
+
+/* ---------- index tiles ---------- */
+var DIMS=[
+ {n:'North star',s:'Net new ASV / revenue-org FTE',f:function(w){return div(w.asv,w.fte)},lead:true},
+ {n:'Managed ASV / FTE',s:'Total managed ASV / revenue-org FTE',f:function(w){return div(w.managed,w.fte)}},
+ {n:'Seller productivity',s:'Net new ASV / total seller FTE',f:function(w){return div(w.asv,w.tsellers)},floor:true},
+ {n:'Producing sellers',s:'Net new ASV / productive seller FTE',f:function(w){return div(w.asv,w.sellers)}},
+ {n:'Management leverage',s:'Net new ASV / FLM',f:function(w){return div(w.asv,w.flms)}},
+ {n:'Support leverage',s:'Net new ASV / supporting FTE',f:function(w){return div(w.asv,w.support)}},
+ {n:'Account yield',s:'Net new ASV / managed account',f:function(w){return div(w.asv,w.accts)}},
+ {n:'Revenue velocity',s:'Qualified pipeline converted to ASV',f:function(w){return w.conv==null?null:w.conv}},
+ {n:'Net expansion',s:'Gross expansion minus attrition',f:function(w){return (w.exp==null&&w.attr==null)?null:(w.exp||0)-(w.attr||0)}}
+];
+function spark(vals){
+  var v=vals.filter(function(x){return x!=null});
+  var NS='http://www.w3.org/2000/svg';
+  var svg=document.createElementNS(NS,'svg');svg.setAttribute('viewBox','0 0 120 36');svg.setAttribute('preserveAspectRatio','none');svg.setAttribute('aria-hidden','true');
+  if(v.length<2){return svg}
+  var mn=Math.min.apply(null,v),mx=Math.max.apply(null,v),rg=mx-mn||1;
+  var pts=vals.map(function(x,i){return x==null?null:[(i/(vals.length-1))*112+4,32-((x-mn)/rg)*26]}).filter(Boolean);
+  var base=document.createElementNS(NS,'line');base.setAttribute('x1',4);base.setAttribute('x2',116);base.setAttribute('y1',34);base.setAttribute('y2',34);base.setAttribute('stroke','var(--line)');svg.appendChild(base);
+  var pl=document.createElementNS(NS,'polyline');pl.setAttribute('points',pts.map(function(p){return p.join(',')}).join(' '));pl.setAttribute('fill','none');pl.setAttribute('stroke','currentColor');pl.setAttribute('stroke-width','1.6');pl.setAttribute('stroke-linejoin','round');svg.appendChild(pl);
+  var l=pts[pts.length-1],c=document.createElementNS(NS,'circle');c.setAttribute('cx',l[0]);c.setAttribute('cy',l[1]);c.setAttribute('r',3);c.setAttribute('fill','currentColor');svg.appendChild(c);
+  return svg;
+}
+function thresholds(){var r=S.settings.filter(function(s){return s.id==='escalation'})[0]||{};return {exposure:r.exposure==null?null:Number(r.exposure),floor:r.floor==null?null:Number(r.floor)}}
+function renderTiles(){
+  var host=$('tiles');host.textContent='';
+  var ws=S.weeks.slice().sort(function(a,b){return a.id<b.id?-1:1});
+  var th=thresholds();
+  if(!ws.length){
+    var e=el('div','empty');e.style.gridColumn='1/-1';
+    e.innerHTML='<b>No weeks entered yet.</b> Use &ldquo;Enter week&rdquo; under Weekly data to log net new ASV and headcount. The index tiles, trends, and forecast accuracy fill in from there.';
+    host.appendChild(e);$('idx-note').textContent='';return;
+  }
+  var last=ws[ws.length-1],prev=ws.length>1?ws[ws.length-2]:null,recent=ws.slice(-12);
+  $('idx-note').textContent='Week of '+fdate(last.id)+' vs prior week. Read side by side; do not add them.';
+  DIMS.forEach(function(d){
+    var cur=d.f(last),pv=prev?d.f(prev):null;
+    var t=el('div','tile'+(d.lead?' lead':''));
+    t.appendChild(el('div','nm',d.n));t.appendChild(el('div','sub',d.s));
+    t.appendChild(el('div','val',money(cur)));
+    var dl=el('div','dl');
+    if(cur!=null&&pv!=null&&pv!==0){var ch=(cur-pv)/Math.abs(pv)*100;dl.className='dl '+(Math.abs(ch)<0.05?'flat':ch>0?'up':'dn');dl.textContent=(ch>0?'▲ +':ch<0?'▼ ':'• ')+ch.toFixed(1)+'% WoW'}
+    else{dl.className='dl flat';dl.textContent='no prior week'}
+    t.appendChild(dl);
+    if(d.floor&&th.floor!=null&&cur!=null&&cur<th.floor){var c=el('span','chip over','Below floor');c.style.alignSelf='flex-start';c.style.marginTop='4px';t.appendChild(c)}
+    t.appendChild(spark(recent.map(d.f)));host.appendChild(t);
+  });
+  var t=el('div','tile');t.appendChild(el('div','nm','Forecast accuracy'));t.appendChild(el('div','sub','Actual vs call, absolute error'));
+  var err=function(w){return (w.call&&w.actual!=null)?(w.actual-w.call)/w.call*100:null};
+  var e0=err(last);
+  t.appendChild(el('div','val',e0==null?'—':Math.abs(e0).toFixed(1)+'%'));
+  var dl=el('div','dl flat');dl.textContent=e0==null?'enter call and actual':(e0>=0?'above':'below')+' the call by '+Math.abs(e0).toFixed(1)+'%';t.appendChild(dl);
+  t.appendChild(spark(recent.map(function(w){var x=err(w);return x==null?null:Math.abs(x)})));host.appendChild(t);
+}
+function renderThresholds(){
+  var th=thresholds(),line=$('th-line');
+  var parts=[];
+  if(th.exposure!=null)parts.push('deal or forecast exposure above '+money(th.exposure));
+  if(th.floor!=null)parts.push('seller productivity below '+money(th.floor)+' per FTE');
+  line.textContent='';
+  line.appendChild(el('b',null,'Escalate to you: '));
+  line.appendChild(document.createTextNode((parts.length?parts.join('; ')+'. ':'thresholds not set yet. ')+'Provisional rules to calibrate: commit movement over 10% week over week; an FLM team 20% below adjusted peers for 60 days; a region below 75% of creation pace for two weeks; a resource conflict unresolved past five business days. Executive leverage and strategic tradeoffs are always yours.'));
+  ['th-exposure','th-floor'].forEach(function(id){var i=$(id);if(document.activeElement!==i){var v=id==='th-exposure'?th.exposure:th.floor;i.value=v==null?'':v}});
+}
+
+/* ---------- today ---------- */
+function renderToday(){
+  var host=$('today');host.textContent='';
+  var now=today(),g=DAYS[now.getDay()],label=g,note='';
+  var show=g;
+  if(g==='Sat'||g==='Sun'){show='Mon';note='Weekend. Next up:'}
+  $('today-label').textContent=now.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
+  $('today-h').textContent=note?'Monday':'Today, '+DAYNAMES[show];
+  if(note){host.appendChild(el('div','muted',note))}
+  var PID={'Forecast & Revenue Risk':'roll','Revenue Growth Council':'council','Deal interventions':'deal','Finance Outlook':'fin','Director 1:1s':'dir','VP of Sales 1:1':'vp','Manager Productivity':'mp','Business Transformation':'bt','Performance & Commitments':'perf','Morning scan':'scan','Daily close':'close','FLM skip-level':'skip'};
+  var add=function(time,name,out,cls){var r=el('div','fr'+(cls?' '+cls:''));r.appendChild(el('div','t',time));var b=el('div');var nb=el('b',null,name);if(PID[name]){nb.className='lnk';nb.setAttribute('data-open',PID[name])}b.appendChild(nb);b.appendChild(el('span',null,out));r.appendChild(b);host.appendChild(r)};
+  add('7:45','Morning scan','On pace? Where is productivity slipping? Where do I step in?');
+  FORUMS.filter(function(f){return f[1]===show}).forEach(function(f){add(f[2],f[0],f[3],f[0]==='Business Transformation'?'tfk':'')});
+  if(SKIPS[show])add(SKIPS[show],'FLM skip-level','One manager, one replicable behavior');
+  add('4:45','Daily close','Log decisions; set tomorrow’s first call');
+}
+
+/* ---------- commitments ---------- */
+function renderCommits(){
+  var host=$('commits');host.textContent='';
+  var open=S.commits.filter(function(c){return !c.done}).sort(function(a,b){return a.due<b.due?-1:1});
+  var nowI=iso(today());
+  if(!open.length){var e=el('div','empty');e.innerHTML='<b>No open commitments.</b> Add the decisions and owners from each forum so Friday&rsquo;s review can check them off.';host.appendChild(e)}
+  open.forEach(function(c){
+    var r=el('div','row');var cb=document.createElement('input');cb.type='checkbox';cb.setAttribute('aria-label','Mark done');
+    cb.onchange=function(){patch('commitments','commits',c.id,{done:true,doneAt:iso(today())})};
+    r.appendChild(cb);
+    var m=el('div');m.appendChild(el('div','tx',c.text));
+    m.appendChild(el('div','meta',c.owner+' · '+(c.forum||'')+' · due '+fdate(c.due)));r.appendChild(m);
+    var right=el('div');right.style.display='flex';right.style.gap='4px';right.style.alignItems='center';
+    if(c.due<nowI)right.appendChild(el('span','chip over','Overdue'));
+    var x=el('button','x','×');x.type='button';x.setAttribute('aria-label','Delete commitment');x.onclick=function(){remove('commitments','commits',c.id)};right.appendChild(x);
+    r.appendChild(right);host.appendChild(r);
+  });
+  var wk=iso(new Date(today().getTime()-7*86400000));
+  var done=S.commits.filter(function(c){return c.done&&c.doneAt>=wk}).length;
+  if(done){host.appendChild(el('div','meta muted',done+' closed in the last 7 days'))}
+}
+
+/* ---------- bets ---------- */
+function betScore(b){var a=(b.hyp||0)*((b.conf==null?100:b.conf)/100);return b.fte>0?a/b.fte:a}
+function renderBets(){
+  var host=$('bets');host.textContent='';
+  var order={Proposed:0,Active:1,Won:2,Stopped:3};
+  var list=S.bets.slice().sort(function(a,b){var oa=order[a.status]==null?1:order[a.status],ob=order[b.status]==null?1:order[b.status];return oa!==ob?oa-ob:betScore(b)-betScore(a)});
+  if(!list.length){var e=el('div','empty');e.innerHTML='<b>No growth bets yet.</b> Propose each bet with expected ASV, FTE capacity, probability, and time to revenue. They rank by risk-adjusted ASV per FTE so the Council can decide who gets the next unit of capacity.';host.appendChild(e);return}
+  var rank=0;
+  list.forEach(function(b){
+    if(b.status==='Proposed')rank++;
+    var review=new Date(parseISO(b.start).getTime()+30*86400000);var left=daysBetween(review,today());
+    var r=el('div','row');r.style.gridTemplateColumns='minmax(0,1fr) auto';
+    var m=el('div');
+    var title=el('div','tx',(b.status==='Proposed'?'#'+rank+'  ':'')+b.name);m.appendChild(title);
+    var bits=['owner '+b.owner];if(b.sponsor)bits.push('sponsor '+b.sponsor);if(b.exec)bits.push(b.exec);bits.push('expected '+money(b.hyp));
+    if(b.conf!=null)bits.push(b.conf+'% likely');
+    if(b.fte!=null)bits.push(b.fte+' FTE');
+    if(b.ttr!=null)bits.push(b.ttr+' wk to revenue');
+    bits.push(money(betScore(b))+' risk-adj. per FTE');
+    if(b.status==='Active')bits.push('review '+fdate(iso(review)));
+    if(b.result!=null)bits.push('actual '+money(b.result));
+    m.appendChild(el('div','meta',bits.join(' · ')));
+    r.appendChild(m);
+    var right=el('div');right.style.display='flex';right.style.gap='6px';right.style.alignItems='center';right.style.flexWrap='wrap';right.style.justifyContent='flex-end';
+    if(b.status==='Active'){right.appendChild(el('span','chip'+(left<0?' over':''),left<0?Math.abs(left)+'d past review':left+'d left'))}
+    var sel=document.createElement('select');sel.style.width='auto';sel.setAttribute('aria-label','Bet status');
+    ['Proposed','Active','Won','Stopped'].forEach(function(s){var o=el('option',null,s);if(s===b.status)o.selected=true;sel.appendChild(o)});
+    sel.onchange=function(){patch('bets','bets',b.id,{status:sel.value})};
+    right.appendChild(sel);
+    var rb=el('button','x','✎');rb.type='button';rb.title='Record actual ASV';rb.setAttribute('aria-label','Record actual ASV');
+    rb.onclick=function(){
+      var f=document.createElement('form');f.style.display='flex';f.style.gap='6px';f.style.gridColumn='1/-1';
+      var i=document.createElement('input');i.type='number';i.step='any';i.min='0';i.placeholder='Actual ASV ($)';i.setAttribute('aria-label','Actual ASV');
+      var ok=el('button','btn','Save');ok.type='submit';
+      f.appendChild(i);f.appendChild(ok);
+      f.onsubmit=function(ev){ev.preventDefault();patch('bets','bets',b.id,{result:i.value===''?null:Number(i.value)})};
+      r.appendChild(f);i.focus();rb.disabled=true;
+    };
+    right.appendChild(rb);
+    var x=el('button','x','×');x.type='button';x.setAttribute('aria-label','Delete bet');x.onclick=function(){remove('bets','bets',b.id)};right.appendChild(x);
+    r.appendChild(right);host.appendChild(r);
+  });
+}
+
+/* ---------- transformation ---------- */
+function isoWeek(d){var t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));var n=t.getUTCDay()||7;t.setUTCDate(t.getUTCDate()+4-n);var y=new Date(Date.UTC(t.getUTCFullYear(),0,1));return Math.ceil(((t-y)/86400000+1)/7)}
+var PHASES=['Diagnose','Design','Pilot','Decide','Scaled','Stopped'];
+function renderTfs(){
+  var host=$('tfs');host.textContent='';
+  $('tf-next').textContent='30-day cycle: week 1 diagnose, 2 design, 3 pilot, 4 decide';
+  var list=S.tfs.slice().sort(function(a,b){var ra=PHASES.indexOf(a.phase)>3?1:0,rb=PHASES.indexOf(b.phase)>3?1:0;return ra!==rb?ra-rb:(a.start<b.start?1:-1)});
+  if(!list.length){var e=el('div','empty');e.innerHTML='<b>No projects yet.</b> Start one project per cycle with an owner, baseline, target, and pilot cohort. Week 4 ends in a scale-or-stop decision.';host.appendChild(e);return}
+  list.forEach(function(t){
+    var r=el('div','row');r.style.gridTemplateColumns='minmax(0,1fr) auto';
+    var m=el('div');m.appendChild(el('div','tx',t.hyp));
+    m.appendChild(el('div','meta',[t.topic,t.owner,'baseline '+t.base,'target '+t.target,t.cohort?'pilot '+t.cohort:null,'started '+fdate(t.start)].filter(Boolean).join(' · ')));
+    if(t.ben){m.appendChild(el('div','meta','Benefits: operational '+(t.ben.op||'—')+' · commercial '+(t.ben.com||'—')+' · financial '+(t.ben.fin||'—')))}
+    r.appendChild(m);
+    var right=el('div');right.style.display='flex';right.style.gap='6px';right.style.alignItems='center';right.style.flexWrap='wrap';right.style.justifyContent='flex-end';
+    var idx=PHASES.indexOf(t.phase);
+    if(idx>=0&&idx<4){var wk=Math.min(4,Math.floor(daysBetween(today(),parseISO(t.start))/7)+1);var late=wk>idx+1;var c=el('span','chip'+(late?' over':' tf'),'Week '+Math.max(1,wk)+' of 4');right.appendChild(c)}
+    if(t.phase==='Scaled'&&t.scaledDate){var dd=daysBetween(today(),parseISO(t.scaledDate)),ms=[30,60,90],nx=ms.filter(function(q){return dd<=q})[0];right.appendChild(el('span','chip tf',nx?(nx-dd)+'d to '+nx+'-day benefit review':'90-day review window passed'))}
+    var sel=document.createElement('select');sel.style.width='auto';sel.setAttribute('aria-label','Phase');
+    PHASES.forEach(function(s){var o=el('option',null,s);if(s===t.phase)o.selected=true;sel.appendChild(o)});
+    sel.onchange=function(){var d={phase:sel.value};if(sel.value==='Scaled'&&!t.scaledDate)d.scaledDate=iso(today());patch('shipped','tfs',t.id,d)};
+    right.appendChild(sel);
+    var bb=el('button','x','✎');bb.type='button';bb.title='Record benefits';bb.setAttribute('aria-label','Record benefits');
+    bb.onclick=function(){
+      var f=document.createElement('form');f.style.gridColumn='1/-1';
+      var mk=function(ph){var i=document.createElement('input');i.placeholder=ph;i.setAttribute('aria-label',ph);i.maxLength=120;return i};
+      var i1=mk('Operational (hours saved per seller)'),i2=mk('Commercial (meetings or opportunities)'),i3=mk('Financial (incremental ASV vs comparison)');
+      var ok=el('button','btn','Save');ok.type='submit';
+      f.appendChild(i1);f.appendChild(i2);f.appendChild(i3);f.appendChild(ok);
+      f.onsubmit=function(ev){ev.preventDefault();patch('shipped','tfs',t.id,{ben:{op:i1.value.trim(),com:i2.value.trim(),fin:i3.value.trim()}})};
+      r.appendChild(f);i1.focus();bb.disabled=true;
+    };
+    right.appendChild(bb);
+    var x=el('button','x','×');x.type='button';x.setAttribute('aria-label','Delete project');x.onclick=function(){remove('shipped','tfs',t.id)};right.appendChild(x);
+    r.appendChild(right);host.appendChild(r);
+  });
+}
+
+/* ---------- weekly table ---------- */
+function renderWeeks(){
+  var tb=$('wk-table');tb.textContent='';
+  var ws=S.weeks.slice().sort(function(a,b){return a.id<b.id?1:-1}).slice(0,12);
+  var head=['Week','Net new ASV','Seller FTE','Productive','FLMs','Support','Rev-org FTE','Accounts','Call','Actual',''];
+  var thead=el('thead'),hr=el('tr');head.forEach(function(x){hr.appendChild(el('th',null,x))});thead.appendChild(hr);tb.appendChild(thead);
+  var body=el('tbody');
+  if(!ws.length){var tr=el('tr'),td=el('td','muted','No weeks yet');td.colSpan=11;td.style.textAlign='left';tr.appendChild(td);body.appendChild(tr)}
+  ws.forEach(function(w){
+    var tr=el('tr');
+    [fdate(w.id),money(w.asv),w.tsellers,w.sellers,w.flms,w.support,w.fte,w.accts,money(w.call),money(w.actual)].forEach(function(v){tr.appendChild(el('td',null,v==null?'—':String(v)))});
+    var td=el('td');var ed=el('button','x','✎');ed.type='button';ed.setAttribute('aria-label','Edit week');ed.onclick=function(){fillWeek(w)};
+    var x=el('button','x','×');x.type='button';x.setAttribute('aria-label','Delete week');x.onclick=function(){remove('weeks','weeks',w.id)};
+    td.appendChild(ed);td.appendChild(x);tr.appendChild(td);body.appendChild(tr);
+  });
+  tb.appendChild(body);
+}
+function fillWeek(w){
+  $('wk-details').open=true;
+  var map={'w-date':w.id,'w-asv':w.asv,'w-tsellers':w.tsellers,'w-sellers':w.sellers,'w-flms':w.flms,'w-support':w.support,'w-fte':w.fte,'w-accts':w.accts,'w-conv':w.conv,'w-managed':w.managed,'w-exp':w.exp,'w-attr':w.attr,'w-call':w.call,'w-actual':w.actual};
+  Object.keys(map).forEach(function(k){$(k).value=map[k]==null?'':map[k]});
+  $('w-date').scrollIntoView({block:'center'});
+}
+function renderByForum(){
+  var host=$('byforum');host.textContent='';
+  host.appendChild(el('div','eyebrow','Decisions logged by forum, last 30 days'));
+  var since=iso(new Date(today().getTime()-30*86400000));
+  var recent=S.commits.filter(function(c){return (c.created||'')>=since});
+  if(!recent.length){var e=el('div','muted','Appears once you log commitments. After 30 days it shows which meetings produced decisions, so you can cut the ones that did not.');e.style.fontSize='13px';host.appendChild(e);return}
+  var impl=recent.filter(function(c){return c.done}).length;var sm=el('div','meta');sm.style.fontSize='13px';sm.textContent='Decisions implemented: '+impl+' of '+recent.length+' committed';host.appendChild(sm);
+  var by={};recent.forEach(function(c){var k=c.forum||'Other';by[k]=by[k]||{n:0,d:0};by[k].n++;if(c.done)by[k].d++});
+  FORUMS.map(function(f){return f[0]}).concat(['Other']).forEach(function(k){
+    var v=by[k]||{n:0,d:0};
+    var r=el('div','row');r.style.gridTemplateColumns='minmax(0,1fr) auto';r.style.padding='5px 0';
+    r.appendChild(el('div','tx',k));r.appendChild(el('span','chip'+(v.n?'':' over'),v.n+' logged · '+v.d+' closed'));host.appendChild(r);
+  });
+}
+function renderStats(){
+  var nowI=iso(today());
+  var open=S.commits.filter(function(c){return !c.done});
+  var over=open.filter(function(c){return c.due<nowI}).length;
+  var active=S.bets.filter(function(b){return b.status==='Active'||b.status==='Proposed'}).length;
+  var shipped=S.tfs.filter(function(t){return t.phase==='Scaled'}).length;
+  var h=$('topstats');h.textContent='';
+  [['Open commitments',open.length,''],['Overdue',over,over?'over':''],['Bets proposed or active',active,''],['Projects scaled',shipped,'']].forEach(function(s){
+    var d=el('div',s[2]);d.appendChild(el('b',null,String(s[1])));d.appendChild(el('span',null,s[0]));h.appendChild(d)});
+}
+function render(){renderStats();renderTiles();renderThresholds();renderToday();renderCommits();renderByForum();renderBets();renderTfs();renderWeeks()}
+
+/* ---------- forms ---------- */
+function setup(){
+  var fs=$('c-forum');FORUMS.concat([['Other']]).forEach(function(f){fs.appendChild(el('option',null,f[0]))});
+  var ts=$('t-topic');TOPICS.forEach(function(t){ts.appendChild(el('option',null,t))});
+  ts.value=TOPICS[isoWeek(today())%TOPICS.length];
+  $('w-date').value=iso(mondayOf(today()));
+  $('b-start').value=iso(today());
+  $('t-start').value=iso(today());
+  $('c-due').value=iso(new Date(today().getTime()+7*86400000));
+  $('f-commit').onsubmit=function(e){e.preventDefault();
+    save('commitments','commits',uid(),{text:$('c-text').value.trim(),owner:$('c-owner').value.trim(),forum:$('c-forum').value,due:$('c-due').value,done:false,created:iso(today())},'Commitment added');
+    $('c-text').value='';$('c-text').focus()};
+  $('f-bet').onsubmit=function(e){e.preventDefault();
+    save('bets','bets',uid(),{name:$('b-name').value.trim(),owner:$('b-owner').value.trim(),hyp:Number($('b-hyp').value),fte:Number($('b-fte').value),conf:Number($('b-conf').value),ttr:Number($('b-ttr').value),start:$('b-start').value,sponsor:$('b-sponsor').value.trim(),exec:$('b-exec').value.trim(),status:'Proposed'},'Bet proposed');
+    ['b-name','b-hyp','b-fte','b-conf','b-ttr','b-exec'].forEach(function(i){$(i).value=''})};
+  $('f-tf').onsubmit=function(e){e.preventDefault();
+    save('shipped','tfs',uid(),{hyp:$('t-hyp').value.trim(),topic:$('t-topic').value,owner:$('t-owner').value.trim(),base:$('t-base').value.trim(),target:$('t-target').value.trim(),cohort:$('t-cohort').value.trim(),start:$('t-start').value,phase:'Diagnose'},'Project started');
+    ['t-hyp','t-base','t-target','t-cohort'].forEach(function(i){$(i).value=''})};
+  $('f-week').onsubmit=function(e){e.preventDefault();
+    var id=iso(mondayOf(parseISO($('w-date').value)));
+    save('weeks','weeks',id,{asv:num('w-asv'),tsellers:num('w-tsellers'),sellers:num('w-sellers'),flms:num('w-flms'),support:num('w-support'),fte:num('w-fte'),accts:num('w-accts'),conv:num('w-conv'),managed:num('w-managed'),exp:num('w-exp'),attr:num('w-attr'),call:num('w-call'),actual:num('w-actual')},'Week saved')};
+  $('f-th').onsubmit=function(e){e.preventDefault();
+    save('settings','settings','escalation',{exposure:num('th-exposure'),floor:num('th-floor')},'Thresholds saved')};
+}
+
+setup();render();
+(function boot(){
+  if(!window.claude||!window.claude.use){$('banner').appendChild(el('div','banner','Saving needs the claude.ai viewer. You can look around, but nothing will persist here.'));return}
+  window.claude.use('db').then(function(d){
+    if(!d){$('banner').appendChild(el('div','banner','Sign in to claude.ai to load and save dashboard data.'));return}
+    db=d;watch('weeks','weeks');watch('commitments','commits');watch('bets','bets');watch('shipped','tfs');watch('settings','settings');
+  }).catch(function(){$('banner').appendChild(el('div','banner','Dashboard data is unavailable right now.'))});
+})();
+
+(function(){
+
+/* k: i = leadership rhythm (default), t = business transformation. Agenda rows are [minutes, text]. */
+var M = [
+ {id:'scan',name:'Morning scan',when:'Daily 7:45 · 15 min',min:15,who:'You',
+  out:'Know whether we are on pace, where productivity is slipping, and where your involvement changes the outcome.',
+  ag:[[5,'Are we on pace? Bookings, pipeline created, conversion, forecast risk'],[5,'Where is productivity deteriorating? Region, manager, territory, or play'],[5,'Where does my involvement change the outcome? One to three interventions']],
+  inputs:['One dashboard that surfaces exceptions automatically, not a hunt across reports'],dec:['The one to three interventions you make today']},
+ {id:'close',name:'Daily close',when:'Daily 4:45 · 15 min',min:15,who:'You',
+  out:'Decisions are logged and tomorrow’s first move is set.',
+  ag:[[5,'Log decisions made and who owns each'],[5,'Note anything promised to a director, the VP, or Finance'],[5,'Set tomorrow’s first call']],
+  inputs:['Running decision log'],dec:['What carries to tomorrow']},
+ {id:'roll',name:'Forecast & Revenue Risk',when:'Mon 9:00 · 60 min',min:60,who:'East, West, Central Directors',
+  out:'One forecast and three critical interventions. Deals on track are not discussed.',
+  ag:[[5,'Last week’s call vs actual'],[25,'Exceptions only: deals or regions outside the forecast band, changes since last Monday, new risk'],[20,'Pick three interventions: owner, date, and which ones you personally engage'],[10,'Confirm the number that goes to Finance']],
+  inputs:['Forecast submitted Sunday night','Exception list, changes only'],dec:['The three interventions','The number you carry into Tuesday’s Finance outlook']},
+ {id:'council',name:'Revenue Growth Council',when:'Tue 9:00 · 60 min',min:60,who:'SDR, CSM, SC, GTM, Marketing, and Channel leaders; the three Directors',
+  out:'Decide which initiative gets the next unit of organizational capacity, with owners, launch dates, and expected results.',
+  ag:[[10,'Performance of existing growth bets'],[20,'New growth opportunities ranked by expected ASV'],[20,'Resource allocation and investment decisions'],[10,'Owners, launch dates, expected results']],
+  inputs:['Each proposed bet: one accountable owner, expected ASV, FTE capacity required, probability of success, time to revenue','Results for bets in flight','Capacity utilization by function, partner capacity included','Agreed attribution rules'],
+  dec:['Which bet gets the next unit of capacity','One accountable owner named for each bet','Bets started, stopped, or resourced','Channel versus direct ownership for smaller accounts'],
+  note:'Rank bets by risk-adjusted ASV per FTE, then check time to revenue: a larger bet that pays in nine months is not the same as a smaller one that pays in six weeks. Detailed program discussion moves offline.'},
+ {id:'deal',name:'Deal interventions',when:'Tue 10:30 · 60 min',min:60,who:'Directors tied to the deals, SC Director as needed',
+  out:'Each Monday intervention and top exception has a dated next step, an executive sponsor, and an owner.',
+  ag:[[5,'Confirm the list from Monday’s three interventions'],[45,'Walk 3 to 4 deals: why we win, what could stop it, next step, sponsor'],[10,'Your personal action list']],
+  inputs:['Mutual close plans','SC coverage by deal'],dec:['Executive outreach you make this week','Deals removed from the forecast']},
+ {id:'fin',name:'Finance Outlook',when:'Tue 1:00 · 45 min',min:45,who:'Finance partner and you',
+  out:'Sales and Finance hold one trusted number and agree on the tradeoffs. Monthly, add the revenue productivity bridge.',
+  ag:[[10,'Walk Monday’s number by region'],[15,'Bridge to plan and last week; timing, discounting, exceptions'],[10,'Financial tradeoffs and asks both ways'],[10,'First Tuesday of the month: productivity bridge replaces the asks (ASV growth, productive capacity, seller output, supporting-function efficiency)']],
+  inputs:['Monday forecast output','Productivity Index movement'],dec:['The number Finance reports upward','Monthly: which economic lever changes FY27 performance']},
+ {id:'dir',name:'Director 1:1s',when:'Wed 8:30 · 3 × 30 min',min:90,who:'Each Director separately',
+  out:'Leadership decisions and regional constraints. Forecast stays out of this meeting.',
+  ag:[[5,'Their win this week'],[10,'Their biggest regional constraint'],[10,'People: manager bench, tail reps, ramp risk'],[5,'Commitments and what you owe them']],
+  inputs:['Director’s own agenda, sent first'],dec:['One people decision or one obstacle you clear']},
+ {id:'vp',name:'VP of Sales 1:1',when:'Wed 10:15 · 30 min',min:30,who:'VP of Sales',
+  out:'Your VP has no surprises and you leave with a decision or resource answer.',
+  ag:[[10,'The number and what changed since Finance'],[10,'One risk and one ask'],[10,'Their priorities for you']],
+  inputs:['Tuesday’s Finance number','One-line risk and ask, sent the night before'],dec:['The ask: resource, exception, or air cover']},
+ {id:'skip',name:'FLM skip-levels',when:'Mon, Wed, Fri · 3 × 30 min',min:30,who:'One FLM from each region per week; all 15 in about five weeks',
+  out:'A manager behavior or intervention the Director can replicate.',
+  ag:[[5,'What is going well'],[10,'Their two highest-leverage reps: pipeline, stage, next step'],[10,'Blockers they cannot clear'],[5,'What the Director will copy or support']],
+  inputs:['Manager’s rep-level pipeline and ASV view','Why this manager was chosen'],dec:['Blocker you take on','Practice handed to the Director'],
+  note:'Choose by productivity variance, leadership development, or a significant constraint. Not a routine status update.'},
+ {id:'mp',name:'Manager Productivity',when:'Thu 8:30 · 60 min',min:60,who:'Three Directors; invite an FLM when a case needs the manager in the room',
+  out:'Find what explains the gap between your strongest and weakest managers, and the one intervention that narrows it.',
+  ag:[[10,'Team productivity by FLM and its 90-day change, adjusted for territory and staffing changes'],[30,'Each Director, 10 min: highest and lowest FLM, the behaviors that explain the gap, the intervention underway'],[10,'Behavior or circumstance? Account potential, territory quality, ramp, and deal mix'],[10,'Practice to scale and constraint to remove']],
+  inputs:['Net new ASV per FLM team and 90-day trend','Territory potential, ramp status, and deal mix by team','Coaching behaviors observed'],
+  dec:['A practice scales only if territory does not explain it','Intervention and owner for each low-productivity FLM']},
+ {id:'bt',k:'t',name:'Business Transformation',when:'Thu 10:30 · 120 min · protected',min:120,who:'You, plus a Director, ops, or function leader as the topic needs',
+  out:'Move one transformation project through its 30-day cycle: diagnose, design, pilot, decide. No operational meetings in this block.',
+  ag:[[10,'Review the project and this week\u2019s phase'],[80,'Phase work: week 1 diagnose, week 2 design, week 3 pilot, week 4 decide'],[20,'Next steps, owner, and measure'],[10,'Log it']],
+  inputs:['Owner, baseline, target, and pilot cohort','The phase deliverable due this week'],dec:['Week 4: scale or stop','Pilot cohort and start date','Benefit review dates set when a project scales'],
+  note:'Example: cut seller administrative work 20% with AI-assisted account preparation, then measure recovered selling capacity and pipeline yield. Rotate topics: coverage redesign, AI and automation, channel productivity, selling friction, commercial programs. After scale, review benefits at 30, 60, and 90 days: operational (hours saved per seller), commercial (meetings or qualified opportunities), financial (incremental ASV against a comparison group). Decline operational requests that land here.'},
+ {id:'perf',name:'Performance & Commitments',when:'Fri 8:30 · 45 min',min:45,who:'Three Directors',
+  out:'Did we execute, what did we learn, and what changes next week.',
+  ag:[[15,'Did we execute? Committed vs completed, and what materially changed'],[15,'What did we learn? One productivity, customer, or conversion insight'],[15,'What changes next week? One priority per region and any cross-functional decision']],
+  inputs:['One-page scorecard auto-built Thursday night','Commitments due this week, marked done or not'],dec:['Next week\u2019s priorities, in writing'],
+  note:'Detailed win/loss and talent calibration run as separate monthly sessions when needed.'}
+];
+
+var W = [
+ ['Mon',[['roll'],['skip','FLM skip-level',null,30,'10:15'],['f','Read-in and intervention prep',60,'12:30'],['c','Customer executive meetings',120,'1:30']]],
+ ['Tue',[['council'],['deal'],['fin'],['c','Customer executive meetings',120,'2:00']]],
+ ['Wed',[['dir'],['vp'],['skip','FLM skip-level',null,30,'1:00'],['c','Customer executive meetings',120,'2:00'],['f','Prep and focus',60,'4:00']]],
+ ['Thu',[['mp'],['bt'],['c','Customer and partner meetings',120,'1:00']]],
+ ['Fri',[['perf'],['skip','FLM skip-level',null,30,'10:00'],['c','Customer meetings, pipeline calls',90,'1:00'],['f','Plan next week, send recap',60,'2:30']]]
+];
+
+var byId={}; M.forEach(function(m){byId[m.id]=m});
+var tot={i:150,c:0,f:0,t:0}; /* 150 = daily scan and close, 5 days x 30 min */
+var week=document.getElementById('week');
+
+function elh(tag,cls,html){var e=document.createElement(tag);if(cls)e.className=cls;if(html!=null)e.innerHTML=html;return e}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')}
+
+var TODAY=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date().getDay()];
+W.forEach(function(d){
+  var col=elh('div','day'+(d[0]===TODAY?' today':''));
+  var THEMES={Mon:'Control revenue',Tue:'Invest in growth',Wed:'Develop leadership',Thu:'Improve productivity',Fri:'Inspect and reset'};
+  col.appendChild(elh('h3',null,d[0]+'<span>'+THEMES[d[0]]+'</span>'));
+  d[1].forEach(function(b){
+    var node,k,mins;
+    if(b[0]==='c'||b[0]==='f'){
+      k=b[0];mins=b[2];
+      node=elh('div','blk static');
+      node.setAttribute('data-k',k);
+      node.innerHTML='<div class="t"><span>'+esc(b[3])+'</span><span>'+mins+'m</span></div><div class="n">'+esc(b[1])+'</div>';
+    }else{
+      var m=byId[b[0]];k=m.k||'i';
+      mins=b[0]==='skip'?b[3]:m.min;
+      node=elh('button','blk');node.type='button';node.setAttribute('data-k',k);node.setAttribute('data-open',m.id);
+      var time=b[0]==='skip'?b[4]:(m.when.match(/\d+:\d+/)||[''])[0];
+      var nm=b[0]==='skip'?b[1]:m.name;
+      node.innerHTML='<div class="t"><span>'+esc(time)+'</span><span>'+mins+'m</span></div><div class="n">'+esc(nm)+'</div>'+(b[0]==='skip'?'':'<div class="w">'+esc(m.who)+'</div>');
+    }
+    tot[k]+=mins;
+    col.appendChild(node);
+  });
+  week.appendChild(col);
+});
+
+var pb=document.getElementById('pb');
+function group(label){pb.appendChild(elh('div','grp',label))}
+var order=[['Daily',['scan','close']],['Forecast and risk',['roll','deal','fin','vp']],['Ecosystem growth',['council']],['People and productivity',['dir','skip','mp']],['Redesign the business',['bt']],['Close the week',['perf']]];
+order.forEach(function(g){
+  group(g[0]);
+  g[1].forEach(function(id){
+    var m=byId[id];
+    var d=elh('details');d.id='m-'+id;
+    var s=elh('summary');
+    s.innerHTML='<span class="nm">'+esc(m.name)+'</span><span class="when">'+esc(m.when)+'</span><span class="out">'+esc(m.out)+'</span>';
+    d.appendChild(s);
+    var b=elh('div','body');
+    var a='<div><h4>Agenda</h4><ol class="ag">'+m.ag.map(function(x){return '<li><em>'+x[0]+' min</em><span>'+esc(x[1])+'</span></li>'}).join('')+'</ol>'+(m.note?'<p style="margin-top:10px;color:var(--muted)">'+esc(m.note)+'</p>':'')+'</div>';
+    a+='<div><h4>Who</h4><p>'+esc(m.who)+'</p><h4 style="margin-top:14px">Bring</h4><ul>'+m.inputs.map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ul></div>';
+    a+='<div><h4>Decisions made here</h4><ul>'+m.dec.map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ul></div>';
+    b.innerHTML=a;d.appendChild(b);
+    pb.appendChild(d);
+  });
+});
+
+function openMeeting(id){
+  if(window.showTab)window.showTab('playbook');
+  var d=document.getElementById('m-'+id);if(!d)return;
+  d.open=true;d.scrollIntoView({block:'start'});
+  var s=d.querySelector('summary');if(s)s.focus({preventScroll:true});
+}
+document.addEventListener('click',function(e){
+  var t=e.target.closest('[data-open]');
+  if(t){e.preventDefault();openMeeting(t.getAttribute('data-open'))}
+});
+
+var all=tot.i+tot.c+tot.f+tot.t;
+function pct(n){return Math.round(n/all*100)}
+function hrs(n){return (n/60).toFixed(1)}
+var bar=document.getElementById('bar');
+[['i',tot.i],['t',tot.t],['f',tot.f],['c',tot.c]].forEach(function(p){var d=document.createElement('div');d.className=p[0];d.style.width=(p[1]/all*100)+'%';bar.appendChild(d)});
+document.getElementById('bstats').innerHTML=
+ '<div><b>'+hrs(all)+' h</b><span>scheduled per week</span></div>'+
+ '<div><b>'+hrs(tot.i)+' h &middot; '+pct(tot.i)+'%</b><span>leadership rhythm</span></div>'+
+ '<div><b>'+hrs(tot.t)+' h &middot; '+pct(tot.t)+'%</b><span>business transformation</span></div>'+
+ '<div><b>'+hrs(tot.f)+' h &middot; '+pct(tot.f)+'%</b><span>prep and focus</span></div>'+
+ '<div><b>'+hrs(tot.c)+' h &middot; '+pct(tot.c)+'%</b><span>customer and field</span></div>'+
+ '<div><b>'+pct(tot.i+tot.f+tot.t)+'%</b><span>internal, including prep and transformation</span></div>';
+
+window.openMeeting=openMeeting;
+})();
+
+
+var TABS=['dash','week','playbook','reference'];
+window.showTab=function(name){
+  if(TABS.indexOf(name)<0)name='dash';
+  TABS.forEach(function(t){var v=document.getElementById('v-'+t),b=document.getElementById('tab-'+t);v.hidden=(t!==name);b.setAttribute('aria-selected',t===name?'true':'false')});
+  try{history.replaceState(null,'',name==='dash'?location.pathname:'#'+name)}catch(e){}
+};
+document.querySelectorAll('.tab').forEach(function(b){b.addEventListener('click',function(){window.showTab(b.getAttribute('data-tab'))})});
+(function(){var h=(location.hash||'').replace('#','');if(TABS.indexOf(h)>0)window.showTab(h)})();
+</script>
